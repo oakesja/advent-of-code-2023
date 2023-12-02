@@ -16,7 +16,7 @@ fn main() -> Result<(), std::io::Error> {
         .map(|line| parse_line(&line.unwrap()))
         .collect::<Vec<(u32, Vec<Vec<Draw>>)>>();
 
-    let answer = games
+    let part1 = games
         .iter()
         .map(|(id, draws)| {
             let is_valid = draws.iter().all(|draw_set| {
@@ -32,7 +32,26 @@ fn main() -> Result<(), std::io::Error> {
         })
         .sum::<u32>();
 
-    println!("{}", answer);
+    println!("{}", part1);
+
+    let part2 = games
+        .iter()
+        .map(|(_, draws)| {
+            let mut max_red = 0;
+            let mut max_green = 0;
+            let mut max_blue = 0;
+
+            draws.iter().for_each(|draw_set| {
+                let draw_counts = sum_draw_set(draw_set);
+                max_red = max_red.max(*draw_counts.get(&"red".to_string()).unwrap_or(&0));
+                max_green = max_green.max(*draw_counts.get(&"green".to_string()).unwrap_or(&0));
+                max_blue = max_blue.max(*draw_counts.get(&"blue".to_string()).unwrap_or(&0));
+            });
+            return max_blue * max_green * max_red;
+        })
+        .sum::<u32>();
+
+    println!("{}", part2);
 
     Ok(())
 }
