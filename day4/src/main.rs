@@ -1,4 +1,5 @@
 use regex::Regex;
+use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -33,6 +34,27 @@ fn main() -> Result<(), std::io::Error> {
         .sum::<u32>();
 
     dbg!(&part1);
+
+    let mut card_counts = HashMap::<usize, usize>::new();
+
+    numbers.iter().enumerate().for_each(|(index, _)| {
+        card_counts.insert(index, 1);
+    });
+
+    numbers.iter().enumerate().for_each(|(index, card)| {
+        let (winners, holding) = &card;
+        let winning_count = holding.iter().filter(|h| winners.contains(h)).count();
+        let card_count = *card_counts.get(&index).unwrap();
+        for i in 1..winning_count + 1 {
+            let next_index = index + i;
+            card_counts.entry(next_index).and_modify(|current_count| {
+                *current_count += card_count;
+            });
+        }
+    });
+
+    let part2 = card_counts.values().sum::<usize>();
+    dbg!(&part2);
 
     Ok(())
 }
