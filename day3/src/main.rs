@@ -5,7 +5,7 @@ use std::{env, fmt};
 
 enum Type {
     Number,
-    Symbol,
+    Symbol(char),
     Empty,
 }
 
@@ -13,7 +13,7 @@ impl fmt::Debug for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Type::Number => write!(f, "N"),
-            Type::Symbol => write!(f, "S"),
+            Type::Symbol(_) => write!(f, "S"),
             Type::Empty => write!(f, "."),
         }
     }
@@ -25,7 +25,7 @@ fn main() -> Result<(), std::io::Error> {
     let file = File::open(file_path)?;
     let reader = io::BufReader::new(file);
 
-    let mut symbol_map: HashMap<(i32, i32), bool> = HashMap::new();
+    let mut symbol_map: HashMap<(i32, i32), char> = HashMap::new();
 
     let number_locs = reader
         .lines()
@@ -35,7 +35,7 @@ fn main() -> Result<(), std::io::Error> {
         })
         .collect::<Vec<(i32, u32, std::ops::Range<i32>)>>();
 
-    let parts = number_locs
+    let part1 = number_locs
         .iter()
         .filter(|(row, _, cols)| {
             let mut possible_symbol_locations = Vec::new();
@@ -46,18 +46,41 @@ fn main() -> Result<(), std::io::Error> {
                 possible_symbol_locations.push((*row + 1, col));
             }
             let is_part = possible_symbol_locations.iter().any(|(row, col)| {
-                if let Some(true) = symbol_map.get(&(*row, *col)) {
-                    return true;
-                }
-                return false;
+                return symbol_map.get(&(*row, *col)).is_some();
             });
             return is_part;
         })
         .map(|(_, value, _)| *value)
-        .collect::<Vec<u32>>();
+        .sum::<u32>();
 
-    let answer = parts.iter().sum::<u32>();
-    dbg!(&answer);
+    dbg!(&part1);
+
+    let mut gear_ratios = HashMap::new();
+    number_locs.iter().for_each(|(row, value, cols)| {
+        let mut possible_symbol_locations = Vec::new();
+        possible_symbol_locations.push((*row, cols.start - 1));
+        possible_symbol_locations.push((*row, cols.end + 1));
+        for col in (cols.start - 1)..(cols.end + 2) {
+            possible_symbol_locations.push((*row - 1, col));
+            possible_symbol_locations.push((*row + 1, col));
+        }
+        let location = possible_symbol_locations.iter().find(|(row, col)| {
+            return symbol_map.get(&(*row, *col)).is_some_and(|c| *c == '*');
+        });
+        if location.is_some() {
+            let (row, col) = location.unwrap();
+            let key = (*row, *col);
+            gear_ratios.entry(key).or_insert_with(Vec::new).push(*value);
+        }
+    });
+
+    let part2 = gear_ratios
+        .iter()
+        .filter(|(_, values)| values.len() > 1)
+        .map(|(_, values)| values.iter().product::<u32>())
+        .sum::<u32>();
+
+    dbg!(&part2);
 
     Ok(())
 }
@@ -65,14 +88,14 @@ fn main() -> Result<(), std::io::Error> {
 fn parse_line(
     row_index: i32,
     line: &str,
-    symbol_map: &mut HashMap<(i32, i32), bool>,
+    symbol_map: &mut HashMap<(i32, i32), char>,
 ) -> Vec<(i32, u32, std::ops::Range<i32>)> {
     let parsed_line = line
         .chars()
         .map(|c| match c {
             '0'..='9' => Type::Number,
             '.' => Type::Empty,
-            _ => Type::Symbol,
+            _ => Type::Symbol(c),
         })
         .collect::<Vec<_>>();
 
@@ -116,8 +139,8 @@ fn parse_line(
         .iter()
         .enumerate()
         .for_each(|(col_index, t)| match t {
-            Type::Symbol => {
-                symbol_map.insert((row_index, col_index.try_into().unwrap()), true);
+            Type::Symbol(c) => {
+                symbol_map.insert((row_index, col_index.try_into().unwrap()), *c);
             }
             _ => {}
         });
