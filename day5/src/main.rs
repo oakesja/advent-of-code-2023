@@ -35,6 +35,29 @@ fn main() -> Result<(), std::io::Error> {
 
     dbg!(&part1);
 
+    let part2 = seeds
+        .chunks(2)
+        .enumerate()
+        .flat_map(|(i, chunk)| {
+            dbg!(i);
+            let start = chunk[0];
+            let range = chunk[1];
+            return (start..start + range).collect::<Vec<i64>>();
+        })
+        .map(|seed| {
+            let soil = lookup(seed, &seed_to_soil);
+            let fertilizer = lookup(soil, &soil_to_fertilizer);
+            let water = lookup(fertilizer, &fertilizer_to_water);
+            let light = lookup(water, &water_to_light);
+            let temperature = lookup(light, &light_to_temperature);
+            let humidity = lookup(temperature, &temperature_to_humidity);
+            let location = lookup(humidity, &humidity_to_location);
+            location
+        })
+        .min();
+
+    dbg!(&part2);
+
     Ok(())
 }
 
