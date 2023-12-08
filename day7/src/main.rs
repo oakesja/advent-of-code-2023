@@ -13,7 +13,7 @@ enum Hand {
     HighCard(u64),
     FullHouse(u64, u64),
 }
-type HandAndBid = (Vec<u64>, Hand, u64, u64);
+type HandAndBid = (Vec<u64>, Hand, u64);
 
 fn main() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
@@ -27,9 +27,12 @@ fn main() -> Result<(), std::io::Error> {
         .collect::<Vec<HandAndBid>>();
 
     hands.sort_by(|a, b| {
-        let (a_cards, _, _, a_score) = a;
-        let (b_cards, _, _, b_score) = b;
-        let score_cmp = a_score.cmp(b_score);
+        let (a_cards, a_hand, _) = a;
+        let (b_cards, b_hand, _) = b;
+        let a_score = score_a_hand(&a_hand);
+        let b_score = score_a_hand(&b_hand);
+
+        let score_cmp = a_score.cmp(&b_score);
         if score_cmp == std::cmp::Ordering::Equal {
             for i in 0..5 {
                 let card_cmp = a_cards[i].cmp(&b_cards[i]);
@@ -41,15 +44,47 @@ fn main() -> Result<(), std::io::Error> {
         return score_cmp;
     });
 
-    dbg!(&hands);
-
     let part1 = hands
         .iter()
         .enumerate()
-        .map(|(i, (_, _, bid, _))| ((i as u64) + 1) * bid)
+        .map(|(i, (_, _, bid))| ((i as u64) + 1) * bid)
         .sum::<u64>();
-
     dbg!(&part1);
+
+    hands.sort_by(|a, b| {
+        let (a_cards, a_hand, _) = a;
+        let (b_cards, b_hand, _) = b;
+        let a_score = score_a_hand_part_2(a_cards, &a_hand);
+        let b_score = score_a_hand_part_2(b_cards, &b_hand);
+
+        let score_cmp = a_score.cmp(&b_score);
+        if score_cmp == std::cmp::Ordering::Equal {
+            for i in 0..5 {
+                let mut a_value = a_cards[i];
+                if a_value == 11 {
+                    a_value = 1
+                }
+                let mut b_value = b_cards[i];
+                if b_value == 11 {
+                    b_value = 1
+                }
+                let card_cmp = a_value.cmp(&b_value);
+                if card_cmp != std::cmp::Ordering::Equal {
+                    return card_cmp;
+                }
+            }
+        }
+        return score_cmp;
+    });
+
+    dbg!(&hands);
+
+    let part2 = hands
+        .iter()
+        .enumerate()
+        .map(|(i, (_, _, bid))| ((i as u64) + 1) * bid)
+        .sum::<u64>();
+    dbg!(part2);
 
     Ok(())
 }
@@ -68,9 +103,7 @@ fn parse_hand(line: &str) -> HandAndBid {
         })
         .collect::<Vec<u64>>();
     let bid = parts[1].parse::<u64>().unwrap();
-    let hand = cards_to_hand(&cards);
-    let score = score_a_hand(&hand);
-    return (cards.clone(), hand.clone(), bid, score);
+    return (cards.clone(), cards_to_hand(&cards), bid);
 }
 
 fn cards_to_hand(cards: &Vec<u64>) -> Hand {
@@ -116,6 +149,53 @@ fn cards_to_hand(cards: &Vec<u64>) -> Hand {
     }
 
     return Hand::HighCard(*cards.iter().max().unwrap());
+}
+
+fn score_a_hand_part_2(cards: &Vec<u64>, hand: &Hand) -> u64 {
+    let jokers = cards.iter().filter(|c| **c == 11).count() as u64;
+    match hand {
+        Hand::FiveAKind(_) => 7,
+        Hand::FourAKind(_) => {
+            if jokers > 0 {
+                7
+            } else {
+                6
+            }
+        }
+        Hand::FullHouse(_, _) => {
+            if jokers > 0 {
+                7
+            } else {
+                5
+            }
+        }
+        Hand::ThreeAKind(_) => {
+            if jokers == 1 || jokers == 3 {
+                6
+            } else if jokers == 2 {
+                7
+            } else {
+                4
+            }
+        }
+        Hand::TwoPair(_, _) => {
+            if jokers == 1 {
+                5
+            } else if jokers == 2 {
+                6
+            } else {
+                3
+            }
+        }
+        Hand::OnePair(_) => {
+            if jokers == 2 || jokers == 1 {
+                4
+            } else {
+                2
+            }
+        }
+        Hand::HighCard(_) => 1 + jokers,
+    }
 }
 
 fn score_a_hand(hand: &Hand) -> u64 {
