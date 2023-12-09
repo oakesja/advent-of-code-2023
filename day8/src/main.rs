@@ -9,6 +9,7 @@ type DesertMap = HashMap<String, (String, String)>;
 fn main() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
     let file_path = &args[1];
+    let is_part_1 = &args[2] == "1";
     let file = File::open(file_path)?;
     let reader = io::BufReader::new(file);
     let mut lines = reader.lines().into_iter();
@@ -24,6 +25,16 @@ fn main() -> Result<(), std::io::Error> {
 
     lines.for_each(|line| add_line_to_map(&line.unwrap(), &mut map));
 
+    if is_part_1 {
+        part1(&map, directions);
+    } else {
+        part2(&map, directions);
+    }
+
+    Ok(())
+}
+
+fn part1(map: &DesertMap, directions: Vec<char>) -> () {
     let mut position = "AAA";
     let mut moves = 0;
     while position != "ZZZ" {
@@ -38,8 +49,31 @@ fn main() -> Result<(), std::io::Error> {
     }
 
     dbg!(moves);
+}
 
-    Ok(())
+fn part2(map: &DesertMap, directions: Vec<char>) -> () {
+    let cycles = map
+        .keys()
+        .into_iter()
+        .filter(|k| k.ends_with("A"))
+        .map(|start| {
+            let mut position = start;
+            let mut moves: u32 = 0;
+            while !position.ends_with("Z") {
+                let direction = directions[(moves as usize) % directions.len()];
+                let (left, right) = map.get(position).unwrap();
+                if direction == 'L' {
+                    position = left;
+                } else {
+                    position = right;
+                }
+                moves += 1;
+            }
+            moves
+        })
+        .collect::<Vec<u32>>();
+
+    dbg!(&cycles);
 }
 
 fn add_line_to_map(line: &str, map: &mut DesertMap) -> () {
