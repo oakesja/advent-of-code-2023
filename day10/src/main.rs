@@ -11,26 +11,31 @@ fn main() -> Result<(), std::io::Error> {
 
     let mut pipes = HashMap::new();
     let mut start = (0, 0);
+    let lines = reader.lines().map(|l| l.unwrap()).collect::<Vec<String>>();
+    let max_y = lines.len() as i32;
+    let max_x = lines[0].len() as i32;
 
-    reader.lines().enumerate().for_each(|(y, line)| {
-        line.unwrap()
-            .chars()
-            .enumerate()
-            .for_each(|(x, c)| match c {
-                '.' => {}
-                'S' => {
-                    start = (x as i32, y as i32);
-                    pipes.insert((x as i32, y as i32), c.to_string());
-                }
-                _ => {
-                    pipes.insert((x as i32, y as i32), c.to_string());
-                }
-            });
+    lines.iter().enumerate().for_each(|(y, line)| {
+        line.chars().enumerate().for_each(|(x, c)| match c {
+            '.' => {}
+            'S' => {
+                start = (x as i32, y as i32);
+                pipes.insert((x as i32, y as i32), c.to_string());
+            }
+            _ => {
+                pipes.insert((x as i32, y as i32), c.to_string());
+            }
+        });
     });
 
+    let mut pipe = vec![start];
     let mut positions = get_next_valid_positions(&pipes, start);
     assert!(positions.len() == 2);
     let mut distance = 1;
+
+    for position in positions.clone() {
+        pipe.push(position.1);
+    }
 
     while positions[0].1 != positions[1].1 {
         let mut next_positions = vec![];
@@ -44,12 +49,46 @@ fn main() -> Result<(), std::io::Error> {
                 .collect::<Vec<((i32, i32), (i32, i32))>>();
             assert!(valid.len() == 1);
             next_positions.push(valid[0]);
+            pipe.push(valid[0].1);
         }
         positions = next_positions;
         distance += 1;
     }
 
     dbg!(distance);
+
+    let mut part2 = vec![];
+    for y in 0..max_y + 1 {
+        let mut line = vec![];
+        for x in 0..max_x + 1 {
+            if pipe.contains(&(x, y)) {
+                line.push(pipes.get(&(x, y)).unwrap().to_string());
+            } else {
+                line.push(".".to_string());
+            }
+        }
+        part2.push(line);
+    }
+
+    loop {
+        let flooded = flood(max_x, max_y, &mut part2);
+        if flooded == 0 {
+            break;
+        }
+    }
+
+    for line in part2.clone() {
+        println!("{}", line.join(""));
+    }
+
+    let mut spots = vec![];
+    part2.iter().enumerate().for_each(|(y, row)| {
+        row.iter().enumerate().for_each(|(x, c)| {
+            if c == "." {
+                spots.push((x, y));
+            }
+        });
+    });
 
     Ok(())
 }
@@ -149,4 +188,48 @@ fn get_next_valid_positions(
         .iter()
         .map(|&p| (position, p))
         .collect::<Vec<((i32, i32), (i32, i32))>>();
+}
+
+fn flood(max_x: i32, max_y: i32, part2: &mut Vec<Vec<String>>) -> usize {
+    let mut flooded = 0;
+    for y in 0..max_y + 1 {
+        for x in 0..max_x + 1 {
+            let val = part2[y as usize][x as usize].to_string();
+
+            if val != "." {
+                continue;
+            }
+
+            let up = part2
+                .get((y - 1) as usize)
+                .unwrap_or(&vec![])
+                .get(x as usize)
+                .unwrap_or(&"0".to_string())
+                .to_string();
+            let down = part2
+                .get((y + 1) as usize)
+                .unwrap_or(&vec![])
+                .get(x as usize)
+                .unwrap_or(&"0".to_string())
+                .to_string();
+            let right = part2
+                .get(y as usize)
+                .unwrap_or(&vec![])
+                .get((x + 1) as usize)
+                .unwrap_or(&"0".to_string())
+                .to_string();
+            let left = part2
+                .get(y as usize)
+                .unwrap_or(&vec![])
+                .get((x - 1) as usize)
+                .unwrap_or(&"0".to_string())
+                .to_string();
+
+            if up == "0" || down == "0" || right == "0" || left == "0" {
+                part2[y as usize][x as usize] = "0".to_string();
+                flooded += 1;
+            }
+        }
+    }
+    flooded
 }
