@@ -16,11 +16,82 @@ fn main() -> Result<(), std::io::Error> {
         .map(|l| parse_line(l.unwrap()))
         .collect::<Vec<Springs>>();
 
-    dbg!(possible_layouts(&(vec!['?', '?'], vec![1, 1])));
-    dbg!(possible_layouts(&(vec!['?', '?', '?'], vec![1, 1])));
-    dbg!(possible_layouts(&(vec!['?', '?', '?'], vec![1])));
-    dbg!(possible_layouts(&(vec!['?', '?', '?', '?'], vec![1, 1])));
-    dbg!(possible_layouts(&springs[1]));
+    assert_eq!(possible_layouts(&(vec!['?'], vec![1])), vec![vec!['#']]);
+    assert_eq!(possible_layouts(&(vec!['#'], vec![1])), vec![vec!['#']]);
+    assert_eq!(
+        possible_layouts(&(vec!['.'], vec![1])),
+        vec![] as Vec<Vec<char>>
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '?'], vec![1])),
+        vec![vec!['#', '.'], vec!['.', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['.', '?'], vec![1])),
+        vec![vec!['.', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '#'], vec![1])),
+        vec![vec!['.', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '#', '?'], vec![2])),
+        vec![vec!['#', '#', '.'], vec!['.', '#', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '?'], vec![2]),),
+        vec![vec!['#', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '?'], vec![1, 1])),
+        vec![] as Vec<Vec<char>>
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '?', '?'], vec![1, 1])),
+        vec![vec!['#', '.', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['#', '.', '#'], vec![1, 1])),
+        vec![vec!['#', '.', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['.', '.', '#'], vec![1, 1])),
+        vec![] as Vec<Vec<char>>
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '?', '?'], vec![1])),
+        vec![['#', '.', '.'], ['.', '#', '.'], ['.', '.', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '?', '?', '?'], vec![1, 1])),
+        vec![
+            ['#', '.', '#', '.'],
+            ['#', '.', '.', '#'],
+            ['.', '#', '.', '#']
+        ]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['.', '?', '?', '?'], vec![1, 1])),
+        vec![['.', '#', '.', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '#', '?'], vec![2])),
+        vec![['#', '#', '.'], ['.', '#', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '#'], vec![1])),
+        vec![['.', '#']]
+    );
+    assert_eq!(
+        possible_layouts(&(vec!['?', '#', '?', '#'], vec![1, 1])),
+        vec![['.', '#', '.', '#']]
+    );
+    // let part1 = springs
+    //     .iter()
+    //     .map(|spring| possible_layouts(spring).len())
+    //     .collect::<Vec<usize>>();
+    // dbg!(part1);
+    dbg!(possible_layouts(&springs[2]));
 
     Ok(())
 }
@@ -49,32 +120,56 @@ fn possible_layouts(spring: &Springs) -> Vec<Vec<char>> {
         return vec![];
     }
 
-    if possibilities == 1 {
-        let mut layout = vec![];
-        for spring_size in spring_sizes {
-            for _ in 0..*spring_size {
-                layout.push('#');
-            }
-            layout.push('.');
-        }
-        layout.pop();
-        return vec![layout];
-    }
-
     if spring_sizes.len() == 1 {
+        let anchor = scrambled_info
+            .iter()
+            .position(|&c| c == '#')
+            .or(scrambled_info.iter().position(|&c| c == '?'));
+
+        if anchor.is_none() {
+            return vec![];
+        }
+
+        let anchor_pos = anchor.unwrap();
+        let mut anchor_size = 0;
+        for i in anchor_pos..scrambled_info.len() {
+            if scrambled_info[i] == '#' {
+                anchor_size += 1;
+            } else {
+                break;
+            }
+        }
+
+        let offset = if anchor_size > spring_sizes[0] {
+            0
+        } else {
+            spring_sizes[0] - anchor_size
+        };
+
+        let start = if anchor_pos >= offset {
+            anchor_pos - offset
+        } else {
+            anchor_pos
+        };
+
         let mut layouts = vec![];
-        for i in 0..possibilities {
-            let mut layout = vec![];
-            for _ in 0..i {
-                layout.push('.');
+        for i in start..possibilities {
+            let is_valid = scrambled_info[i..i + spring_sizes[0]]
+                .iter()
+                .all(|&c| c == '?' || c == '#');
+            if is_valid {
+                let mut layout = vec![];
+                for _ in 0..i {
+                    layout.push('.');
+                }
+                for _ in 0..spring_sizes[0] {
+                    layout.push('#');
+                }
+                for _ in i + spring_sizes[0]..scrambled_info.len() {
+                    layout.push('.');
+                }
+                layouts.push(layout);
             }
-            for _ in 0..spring_sizes[0] {
-                layout.push('#');
-            }
-            for _ in i..scrambled_info.len() - spring_sizes[0] - 1 {
-                layout.push('.');
-            }
-            layouts.push(layout);
         }
         return layouts;
     }
@@ -83,24 +178,29 @@ fn possible_layouts(spring: &Springs) -> Vec<Vec<char>> {
     let mut layouts = vec![];
     for i in 0..(possibilities) {
         let mut initial_layout = vec![];
-        for _ in 0..i {
+        let is_valid = scrambled_info[i..i + spring_sizes[0]]
+            .iter()
+            .all(|&c| c == '?' || c == '#');
+        if is_valid {
+            for _ in 0..i {
+                initial_layout.push('.');
+            }
+            for _ in 0..first_spring_size {
+                initial_layout.push('#');
+            }
             initial_layout.push('.');
-        }
-        for _ in 0..first_spring_size {
-            initial_layout.push('#');
-        }
-        initial_layout.push('.');
 
-        let remaining_info = scrambled_info[i + first_spring_size + 1..].to_vec();
-        let remaining_spring_sizes = spring_sizes[1..].to_vec();
+            let remaining_info = scrambled_info[i + first_spring_size + 1..].to_vec();
+            let remaining_spring_sizes = spring_sizes[1..].to_vec();
 
-        let next = possible_layouts(&(remaining_info, remaining_spring_sizes));
+            let next = possible_layouts(&(remaining_info, remaining_spring_sizes));
 
-        if next.len() > 0 {
-            for layout in next {
-                let mut new_layout = initial_layout.clone();
-                new_layout.append(&mut layout.clone());
-                layouts.push(new_layout);
+            if next.len() > 0 {
+                for layout in next {
+                    let mut new_layout = initial_layout.clone();
+                    new_layout.append(&mut layout.clone());
+                    layouts.push(new_layout);
+                }
             }
         }
     }
