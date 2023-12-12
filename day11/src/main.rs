@@ -1,7 +1,8 @@
 use pathfinding::prelude::bfs;
-use std::env;
+use std::cmp;
 use std::fs::File;
 use std::io::{self, BufRead};
+use std::{env, usize};
 
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 struct Pos(usize, usize);
@@ -26,60 +27,20 @@ fn main() -> Result<(), std::io::Error> {
     let file = File::open(file_path)?;
     let reader = io::BufReader::new(file);
 
-    let mut lines = reader
+    let lines = reader
         .lines()
         .map(|l| l.unwrap().chars().collect())
         .collect::<Vec<Vec<char>>>();
 
-    expand(&mut lines);
-
     let galaxies = find_galaxies(&lines);
     let galaxy_pairs = get_galaxy_pairs(&galaxies);
 
-    let part1 = galaxy_pairs
-        .iter()
-        .map(|(a, b)| {
-            let distance = bfs(*a, |p| p.successors(), |p| *p == **b);
-            return distance.unwrap().len() - 1;
-        })
-        .sum::<usize>();
-
-    dbg!(part1);
+    // dbg!(find_total_distance(&galaxy_pairs, &lines, 1));
+    // dbg!(find_total_distance(&galaxy_pairs, &lines, 9));
+    // dbg!(find_total_distance(&galaxy_pairs, &lines, 99));
+    dbg!(find_total_distance(&galaxy_pairs, &lines, 999999));
 
     Ok(())
-}
-
-fn expand(lines: &mut Vec<Vec<char>>) {
-    let empty_rows = lines
-        .iter()
-        .enumerate()
-        .filter(|(_, line)| line.iter().all(|&c| c == '.'))
-        .map(|(i, _)| i)
-        .collect::<Vec<usize>>();
-
-    let mut empty_cols = vec![];
-    for x in 0..lines[0].len() {
-        let mut empty = true;
-        for y in 0..lines.len() {
-            if lines[y][x] != '.' {
-                empty = false;
-                break;
-            }
-        }
-        if empty {
-            empty_cols.push(x);
-        }
-    }
-
-    empty_rows.iter().rev().for_each(|&row| {
-        lines.insert(row, vec!['.'; lines[0].len()]);
-    });
-
-    empty_cols.iter().rev().for_each(|&col| {
-        lines.iter_mut().for_each(|line| {
-            line.insert(col, '.');
-        });
-    });
 }
 
 fn find_galaxies(lines: &Vec<Vec<char>>) -> Vec<Pos> {
@@ -96,6 +57,39 @@ fn find_galaxies(lines: &Vec<Vec<char>>) -> Vec<Pos> {
     galaxies
 }
 
+fn find_empty_rows_between(line: &Vec<Vec<char>>, y0: usize, y1: usize) -> usize {
+    let y_min = cmp::min(y0, y1);
+    let y_max = cmp::max(y0, y1);
+    let mut empty_rows = 0;
+    for y in y_min..y_max {
+        let empty = line[y].iter().all(|&c| c == '.');
+        if empty {
+            empty_rows += 1;
+        }
+    }
+    empty_rows
+}
+
+fn find_empty_cols_between(lines: &Vec<Vec<char>>, x0: usize, x1: usize) -> usize {
+    let x_min = cmp::min(x0, x1);
+    let x_max = cmp::max(x0, x1);
+
+    let mut empty_cols = 0;
+    for x in x_min..x_max {
+        let mut empty = true;
+        for y in 0..lines.len() {
+            if lines[y][x] != '.' {
+                empty = false;
+                break;
+            }
+        }
+        if empty {
+            empty_cols += 1;
+        }
+    }
+    empty_cols
+}
+
 fn get_galaxy_pairs<T>(vec: &[T]) -> Vec<(&T, &T)> {
     let mut pairs = Vec::new();
 
@@ -106,4 +100,28 @@ fn get_galaxy_pairs<T>(vec: &[T]) -> Vec<(&T, &T)> {
     }
 
     pairs
+}
+
+fn find_total_distance(
+    galaxy_pairs: &Vec<(&Pos, &Pos)>,
+    lines: &Vec<Vec<char>>,
+    expansions: usize,
+) -> usize {
+    return galaxy_pairs
+        .iter()
+        .map(|(a, b)| find_distance_between_galaxies(a, b, &lines, expansions))
+        .sum::<usize>();
+}
+
+fn find_distance_between_galaxies(
+    a: &Pos,
+    b: &Pos,
+    lines: &Vec<Vec<char>>,
+    expansions: usize,
+) -> usize {
+    let path = bfs(a, |p| p.successors(), |p| *p == *b);
+    let distance = path.unwrap().len() - 1;
+    let x_expansion = find_empty_cols_between(&lines, a.0, b.0) * expansions;
+    let y_expansion = find_empty_rows_between(&lines, a.1, b.1) * expansions;
+    return distance + x_expansion + y_expansion;
 }
