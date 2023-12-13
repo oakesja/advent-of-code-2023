@@ -3,6 +3,8 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
 
+use pathfinding::directed::bfs::bfs;
+
 fn main() -> Result<(), std::io::Error> {
     let args: Vec<String> = env::args().collect();
     let file_path = &args[1];
@@ -12,8 +14,6 @@ fn main() -> Result<(), std::io::Error> {
     let mut pipes = HashMap::new();
     let mut start = (0, 0);
     let lines = reader.lines().map(|l| l.unwrap()).collect::<Vec<String>>();
-    let max_y = lines.len() as i32;
-    let max_x = lines[0].len() as i32;
 
     lines.iter().enumerate().for_each(|(y, line)| {
         line.chars().enumerate().for_each(|(x, c)| match c {
@@ -28,67 +28,32 @@ fn main() -> Result<(), std::io::Error> {
         });
     });
 
-    let mut pipe = vec![start];
-    let mut positions = get_next_valid_positions(&pipes, start);
-    assert!(positions.len() == 2);
-    let mut distance = 1;
+    let first_position = get_next_valid_positions(&pipes, start, start)[0];
 
-    for position in positions.clone() {
-        pipe.push(position.1);
-    }
+    let mut path = bfs(
+        &first_position,
+        |(previous, current)| get_next_valid_positions(&pipes, *current, *previous),
+        |(_, current)| *current == start,
+    )
+    .unwrap()
+    .iter()
+    .map(|(_, current)| *current)
+    .collect::<Vec<(i32, i32)>>();
 
-    while positions[0].1 != positions[1].1 {
-        let mut next_positions = vec![];
-        for position in positions {
-            let (previous, current) = position;
-            let next_valid_positions = get_next_valid_positions(&pipes, current);
-            let valid = next_valid_positions
-                .iter()
-                .filter(|(_, c)| *c != previous)
-                .map(|&p| p)
-                .collect::<Vec<((i32, i32), (i32, i32))>>();
-            assert!(valid.len() == 1);
-            next_positions.push(valid[0]);
-            pipe.push(valid[0].1);
-        }
-        positions = next_positions;
-        distance += 1;
-    }
+    let part1 = &path.len() / 2;
+    dbg!(part1);
 
-    dbg!(distance);
+    path.push(start);
+    path.insert(0, start);
 
-    let mut part2 = vec![];
-    for y in 0..max_y + 1 {
-        let mut line = vec![];
-        for x in 0..max_x + 1 {
-            if pipe.contains(&(x, y)) {
-                line.push(pipes.get(&(x, y)).unwrap().to_string());
-            } else {
-                line.push(".".to_string());
-            }
-        }
-        part2.push(line);
-    }
-
-    loop {
-        let flooded = flood(max_x, max_y, &mut part2);
-        if flooded == 0 {
-            break;
-        }
-    }
-
-    for line in part2.clone() {
-        println!("{}", line.join(""));
-    }
-
-    let mut spots = vec![];
-    part2.iter().enumerate().for_each(|(y, row)| {
-        row.iter().enumerate().for_each(|(x, c)| {
-            if c == "." {
-                spots.push((x, y));
-            }
-        });
-    });
+    let area = path
+        .windows(2)
+        .map(|w| cross(w[0], w[1]))
+        .sum::<i32>()
+        .abs()
+        / 2;
+    let part2 = area - (path.len() as i32 - 2) / 2 + 1;
+    dbg!(part2);
 
     Ok(())
 }
@@ -96,6 +61,7 @@ fn main() -> Result<(), std::io::Error> {
 fn get_next_valid_positions(
     pipes: &HashMap<(i32, i32), String>,
     position: (i32, i32),
+    previous: (i32, i32),
 ) -> Vec<((i32, i32), (i32, i32))> {
     let mut next_positions = vec![];
     let (x, y) = position;
@@ -120,6 +86,9 @@ fn get_next_valid_positions(
         ["F", "J"] => true,
         ["F", "-"] => true,
         ["F", "7"] => true,
+        ["-", "S"] => true,
+        ["L", "S"] => true,
+        ["F", "S"] => true,
         _ => false,
     };
 
@@ -136,6 +105,9 @@ fn get_next_valid_positions(
         ["7", "L"] => true,
         ["7", "-"] => true,
         ["7", "F"] => true,
+        ["-", "S"] => true,
+        ["J", "S"] => true,
+        ["7", "S"] => true,
         _ => false,
     };
 
@@ -152,6 +124,9 @@ fn get_next_valid_positions(
         ["L", "7"] => true,
         ["L", "|"] => true,
         ["L", "F"] => true,
+        ["|", "S"] => true,
+        ["J", "S"] => true,
+        ["L", "S"] => true,
         _ => false,
     };
 
@@ -168,19 +143,22 @@ fn get_next_valid_positions(
         ["F", "J"] => true,
         ["F", "|"] => true,
         ["F", "L"] => true,
+        ["|", "S"] => true,
+        ["7", "S"] => true,
+        ["F", "S"] => true,
         _ => false,
     };
 
-    if right_is_valid {
+    if right_is_valid && previous != (x + 1, y) {
         next_positions.push((x + 1, y));
     }
-    if left_is_valid {
+    if left_is_valid && previous != (x - 1, y) {
         next_positions.push((x - 1, y));
     }
-    if top_is_valid {
+    if top_is_valid && previous != (x, y - 1) {
         next_positions.push((x, y - 1));
     }
-    if bottom_is_valid {
+    if bottom_is_valid && previous != (x, y + 1) {
         next_positions.push((x, y + 1));
     }
 
@@ -190,46 +168,6 @@ fn get_next_valid_positions(
         .collect::<Vec<((i32, i32), (i32, i32))>>();
 }
 
-fn flood(max_x: i32, max_y: i32, part2: &mut Vec<Vec<String>>) -> usize {
-    let mut flooded = 0;
-    for y in 0..max_y + 1 {
-        for x in 0..max_x + 1 {
-            let val = part2[y as usize][x as usize].to_string();
-
-            if val != "." {
-                continue;
-            }
-
-            let up = part2
-                .get((y - 1) as usize)
-                .unwrap_or(&vec![])
-                .get(x as usize)
-                .unwrap_or(&"0".to_string())
-                .to_string();
-            let down = part2
-                .get((y + 1) as usize)
-                .unwrap_or(&vec![])
-                .get(x as usize)
-                .unwrap_or(&"0".to_string())
-                .to_string();
-            let right = part2
-                .get(y as usize)
-                .unwrap_or(&vec![])
-                .get((x + 1) as usize)
-                .unwrap_or(&"0".to_string())
-                .to_string();
-            let left = part2
-                .get(y as usize)
-                .unwrap_or(&vec![])
-                .get((x - 1) as usize)
-                .unwrap_or(&"0".to_string())
-                .to_string();
-
-            if up == "0" || down == "0" || right == "0" || left == "0" {
-                part2[y as usize][x as usize] = "0".to_string();
-                flooded += 1;
-            }
-        }
-    }
-    flooded
+fn cross(a: (i32, i32), b: (i32, i32)) -> i32 {
+    a.0 * b.1 - a.1 * b.0
 }
