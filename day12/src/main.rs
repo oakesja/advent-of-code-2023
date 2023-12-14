@@ -1,4 +1,3 @@
-use minisat::symbolic::Symbolic;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
@@ -11,87 +10,17 @@ fn main() -> Result<(), std::io::Error> {
     let file = File::open(file_path)?;
     let reader = io::BufReader::new(file);
 
-    let springs = reader
-        .lines()
-        .map(|l| parse_line(l.unwrap()))
-        .collect::<Vec<Springs>>();
+    let springs: Vec<Springs> = reader.lines().map(|l| parse_line(l.unwrap())).collect();
 
-    // assert_eq!(possible_layouts(&(vec!['?'], vec![1])), vec![vec!['#']]);
-    // assert_eq!(possible_layouts(&(vec!['#'], vec![1])), vec![vec!['#']]);
-    // assert_eq!(
-    //     possible_layouts(&(vec!['.'], vec![1])),
-    //     vec![] as Vec<Vec<char>>
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '?'], vec![1])),
-    //     vec![vec!['#', '.'], vec!['.', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['.', '?'], vec![1])),
-    //     vec![vec!['.', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '#'], vec![1])),
-    //     vec![vec!['.', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '#', '?'], vec![2])),
-    //     vec![vec!['#', '#', '.'], vec!['.', '#', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '?'], vec![2]),),
-    //     vec![vec!['#', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '?'], vec![1, 1])),
-    //     vec![] as Vec<Vec<char>>
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '?', '?'], vec![1, 1])),
-    //     vec![vec!['#', '.', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['#', '.', '#'], vec![1, 1])),
-    //     vec![vec!['#', '.', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['.', '.', '#'], vec![1, 1])),
-    //     vec![] as Vec<Vec<char>>
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '?', '?'], vec![1])),
-    //     vec![['#', '.', '.'], ['.', '#', '.'], ['.', '.', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '?', '?', '?'], vec![1, 1])),
-    //     vec![
-    //         ['#', '.', '#', '.'],
-    //         ['#', '.', '.', '#'],
-    //         ['.', '#', '.', '#']
-    //     ]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['.', '?', '?', '?'], vec![1, 1])),
-    //     vec![['.', '#', '.', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '#', '?'], vec![2])),
-    //     vec![['#', '#', '.'], ['.', '#', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '#'], vec![1])),
-    //     vec![['.', '#']]
-    // );
-    // assert_eq!(
-    //     possible_layouts(&(vec!['?', '#', '?', '#'], vec![1, 1])),
-    //     vec![['.', '#', '.', '#']]
-    // );
-    // let part1 = springs
-    //     .iter()
-    //     .map(|spring| possible_layouts(spring).len())
-    //     .collect::<Vec<usize>>();
-    // dbg!(part1);
-    dbg!(possible_layouts(&springs[0]));
+    let part1: u32 = springs
+        .iter()
+        .map(|(sequence, groups)| {
+            let mut total = 0;
+            find_possible_solutions(&mut sequence.clone(), &groups, 0, &mut total);
+            total
+        })
+        .sum();
+    dbg!(part1);
 
     Ok(())
 }
@@ -106,7 +35,56 @@ fn parse_line(line: String) -> Springs {
     (scrambled_info, spring_sizes)
 }
 
-fn possible_layouts(spring: &Springs) -> () {
-    let (scrambled_info, damaged_areas) = spring;
-    let mut solver = minisat::Solver::new();
+fn find_possible_solutions(
+    sequence: &mut Vec<char>,
+    groups: &[usize],
+    index: usize,
+    total: &mut u32,
+) -> () {
+    if index == sequence.len() {
+        if is_valid_solution(&sequence, groups) {
+            *total += 1;
+        }
+        return;
+    }
+
+    if sequence[index] != '?' {
+        find_possible_solutions(sequence, groups, index + 1, total);
+    } else {
+        sequence[index] = '#';
+        find_possible_solutions(sequence, groups, index + 1, total);
+
+        sequence[index] = '.';
+        find_possible_solutions(sequence, groups, index + 1, total);
+        sequence[index] = '?';
+    }
+}
+
+fn is_valid_solution(sequence: &[char], groups: &[usize]) -> bool {
+    let mut group_size = 0;
+    let mut groups = groups.to_vec();
+    for c in sequence {
+        if *c == '#' {
+            group_size += 1;
+        } else if group_size > 0 {
+            if groups.is_empty() {
+                return false;
+            }
+            let expected = groups.remove(0);
+            if expected != group_size {
+                return false;
+            }
+            group_size = 0;
+        }
+    }
+    if group_size > 0 {
+        if groups.is_empty() {
+            return false;
+        }
+        let expected = groups.remove(0);
+        if expected != group_size {
+            return false;
+        }
+    }
+    return groups.is_empty();
 }
