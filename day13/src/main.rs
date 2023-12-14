@@ -22,30 +22,35 @@ fn main() -> Result<(), std::io::Error> {
     });
     mirrors.push(current_mirror.clone());
 
-    let part1: u32 = mirrors.iter().map(|m| find_mirror_locations(m)).sum();
+    let part1: u32 = mirrors
+        .iter()
+        .map(|m| find_mirror_locations(m, false))
+        .sum();
     dbg!(part1);
+
+    let part2: u32 = mirrors.iter().map(|m| find_mirror_locations(m, true)).sum();
+    dbg!(part2);
 
     Ok(())
 }
 
-fn find_mirror_locations(mirror: &Vec<Vec<char>>) -> u32 {
+fn find_mirror_locations(mirror: &Vec<Vec<char>>, allow_smudge: bool) -> u32 {
     for mirror_row in 1..mirror.len() {
         let rows_above = mirror_row;
         let rows_below = mirror.len() - mirror_row;
         let rows_to_check = cmp::min(rows_above, rows_below);
-        let mut is_mirror = true;
+        let mut differences = 0;
         for row_offset in 0..rows_to_check {
             for col in 0..mirror[mirror_row].len() {
                 let v1 = mirror[mirror_row - row_offset - 1][col];
                 let v2 = mirror[mirror_row + row_offset][col];
                 if v1 != v2 {
-                    is_mirror = false;
-                    break;
+                    differences += 1;
                 }
             }
         }
 
-        if is_mirror {
+        if (differences == 0 && !allow_smudge) || (differences == 1 && allow_smudge) {
             return (mirror_row as u32) * 100;
         }
     }
@@ -54,19 +59,18 @@ fn find_mirror_locations(mirror: &Vec<Vec<char>>) -> u32 {
         let cols_left = mirror_col;
         let cols_right = mirror[0].len() - mirror_col;
         let cols_to_check = cmp::min(cols_left, cols_right);
-        let mut is_mirror = true;
+        let mut differences = 0;
         for col_offset in 0..cols_to_check {
             for row in 0..mirror.len() {
                 let v1 = mirror[row][mirror_col - col_offset - 1];
                 let v2 = mirror[row][mirror_col + col_offset];
                 if v1 != v2 {
-                    is_mirror = false;
-                    break;
+                    differences += 1;
                 }
             }
         }
 
-        if is_mirror {
+        if (differences == 0 && !allow_smudge) || (differences == 1 && allow_smudge) {
             return mirror_col as u32;
         }
     }
