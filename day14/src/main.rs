@@ -51,6 +51,11 @@ fn main() -> Result<(), std::io::Error> {
        999999998 mod 8 = 6
     */
 
+    /*
+      real input repeats every 18 after 81 iterations
+
+    */
+
     Ok(())
 }
 
