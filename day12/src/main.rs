@@ -13,40 +13,40 @@ fn main() -> Result<(), std::io::Error> {
 
     let springs: Vec<Springs> = reader.lines().map(|l| parse_line(l.unwrap())).collect();
 
-    // let part1: u64 = springs
-    //     .iter()
-    //     .map(|(sequence, groups)| {
-    //         let mut total = 0;
-    //         find_possible_solutions(&mut sequence.clone(), &groups, 0, &mut total);
-    //         total
-    //     })
-    //     .sum();
-    // dbg!(part1);
+    let part1: u64 = springs
+        .iter()
+        .map(|(sequence, groups)| {
+            let mut total = 0;
+            find_possible_solutions(&mut sequence.clone(), &groups, 0, &mut total);
+            total
+        })
+        .sum();
+    dbg!(part1);
 
-    let s: Vec<Springs> = springs.iter().map(unfold).collect();
-    // let (sequence, groups) = &s[1];
-    let (sequence, groups) = &s[5];
+    // let s: Vec<Springs> = springs.iter().map(unfold).collect();
+    // // let (sequence, groups) = &s[1];
+    // let (sequence, groups) = &s[5];
 
-    let mut total = 0;
-    let mut total2 = 0;
-    println!("{}", sequence.iter().collect::<String>());
-    dbg!(groups);
-    find_possible_solutions(&mut sequence.clone(), &groups, 0, &mut total, &mut total2);
-    dbg!(total);
-    dbg!(total2);
+    // let mut total = 0;
+    // let mut total2 = 0;
+    // println!("{}", sequence.iter().collect::<String>());
+    // dbg!(groups);
+    // find_possible_solutions(&mut sequence.clone(), &groups, 0, &mut total, &mut total2);
+    // dbg!(total);
+    // dbg!(total2);
 
-    // let part2: u64 = springs
-    //     .par_iter()
-    //     .map(unfold)
-    //     .enumerate()
-    //     .map(|(i, (sequence, groups))| {
-    //         dbg!(i);
-    //         let mut total = 0;
-    //         find_possible_solutions(&mut sequence.clone(), &groups, 0, &mut total);
-    //         total
-    //     })
-    //     .sum();
-    // dbg!(part2);
+    let part2: u64 = springs
+        .par_iter()
+        .map(unfold)
+        .enumerate()
+        .map(|(i, (sequence, groups))| {
+            dbg!(i);
+            let mut total = 0;
+            find_possible_solutions(&mut sequence.clone(), &groups, 0, &mut total);
+            total
+        })
+        .sum();
+    dbg!(part2);
 
     Ok(())
 }
@@ -66,15 +66,11 @@ fn find_possible_solutions(
     groups: &Vec<usize>,
     index: usize,
     total: &mut u64,
-    total2: &mut u64,
 ) -> () {
     if index == sequence.len() {
         if is_valid_solution(&sequence, groups) {
             *total += 1;
-        } else {
-            println!("{}", sequence.iter().collect::<String>())
         }
-        *total2 += 1;
         return;
     }
 
@@ -84,17 +80,17 @@ fn find_possible_solutions(
     }
 
     if sequence[index] != '?' {
-        find_possible_solutions(sequence, groups, index + 1, total, total2);
+        find_possible_solutions(sequence, groups, index + 1, total);
     } else {
         if !groups_left.is_empty()
             && !(current_group_size.is_some() && current_group_size.unwrap() == groups_left[0])
         {
             sequence[index] = '#';
-            find_possible_solutions(sequence, groups, index + 1, total, total2);
+            find_possible_solutions(sequence, groups, index + 1, total);
         }
 
         sequence[index] = '.';
-        find_possible_solutions(sequence, groups, index + 1, total, total2);
+        find_possible_solutions(sequence, groups, index + 1, total);
         sequence[index] = '?';
     }
 }
