@@ -1,3 +1,4 @@
+use rayon::{prelude::*, vec};
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
@@ -26,6 +27,25 @@ fn main() -> Result<(), std::io::Error> {
 
     let part1 = get_energized_count(((0, 0), Direction::Right), &input);
     dbg!(part1);
+
+    let mut starts = vec![];
+    let max_y = (input.len() - 1) as u32;
+    let max_x = (input[0].len() - 1) as u32;
+    for x in 0..input[0].len() {
+        starts.push(((x as u32, 0), Direction::Down));
+        starts.push(((x as u32, max_y), Direction::Up));
+    }
+    for y in 0..input.len() {
+        starts.push(((0, y as u32), Direction::Right));
+        starts.push(((max_x, y as u32), Direction::Left));
+    }
+
+    let part2 = starts
+        .par_iter()
+        .map(|start| get_energized_count(start.clone(), &input))
+        .max();
+
+    dbg!(part2);
 
     Ok(())
 }
@@ -61,8 +81,8 @@ fn get_energized_count(start: Beam, input: &Vec<Vec<char>>) -> u32 {
 
 fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
     let ((x, y), direction) = beam;
-    let max_x = input[0].len() as u32;
-    let max_y = input.len() as u32;
+    let max_x = (input[0].len() - 1) as u32;
+    let max_y = (input.len() - 1) as u32;
     let current = input[y as usize][x as usize];
     if direction == Direction::Up {
         match current {
@@ -73,7 +93,7 @@ fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
                 return None;
             }
             '/' => {
-                if x < max_x - 1 {
+                if x < max_x {
                     return Some(vec![((x + 1, y), Direction::Right)]);
                 }
                 return None;
@@ -87,7 +107,7 @@ fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
             '-' => {
                 if x == 0 {
                     return Some(vec![((x + 1, y), Direction::Right)]);
-                } else if x == max_x - 1 {
+                } else if x == max_x {
                     return Some(vec![((x - 1, y), Direction::Left)]);
                 }
                 return Some(vec![
@@ -101,7 +121,7 @@ fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
     if direction == Direction::Down {
         match current {
             '|' | '.' | '#' => {
-                if y < max_y - 1 {
+                if y < max_y {
                     return Some(vec![((x, y + 1), Direction::Down)]);
                 }
                 return None;
@@ -113,7 +133,7 @@ fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
                 return None;
             }
             '\\' => {
-                if x < max_x - 1 {
+                if x < max_x {
                     return Some(vec![((x + 1, y), Direction::Right)]);
                 }
                 return None;
@@ -121,7 +141,7 @@ fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
             '-' => {
                 if x == 0 {
                     return Some(vec![((x + 1, y), Direction::Right)]);
-                } else if x == max_x - 1 {
+                } else if x == max_x {
                     return Some(vec![((x - 1, y), Direction::Left)]);
                 }
                 return Some(vec![
@@ -152,13 +172,13 @@ fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
                 return None;
             }
             '\\' => {
-                if y < max_y - 1 {
+                if y < max_y {
                     return Some(vec![((x, y + 1), Direction::Down)]);
                 }
                 return None;
             }
             '-' | '.' | '#' => {
-                if x < max_x - 1 {
+                if x < max_x {
                     return Some(vec![((x + 1, y), Direction::Right)]);
                 }
                 return None;
@@ -171,7 +191,7 @@ fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
             '|' => {
                 if y == 0 {
                     return Some(vec![((x, y + 1), Direction::Down)]);
-                } else if y == max_y - 1 {
+                } else if y == max_y {
                     return Some(vec![((x, y - 1), Direction::Up)]);
                 }
                 return Some(vec![
@@ -180,7 +200,7 @@ fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
                 ]);
             }
             '/' => {
-                if y < max_y - 1 {
+                if y < max_y {
                     return Some(vec![((x, y + 1), Direction::Down)]);
                 }
                 return None;
