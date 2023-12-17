@@ -24,9 +24,15 @@ fn main() -> Result<(), std::io::Error> {
         .map(|l| l.unwrap().chars().collect::<Vec<char>>())
         .collect::<Vec<Vec<char>>>();
 
-    let mut visited = HashMap::new();
+    let part1 = get_energized_count(((0, 0), Direction::Right), &input);
+    dbg!(part1);
 
-    let mut beams = vec![((0, 0), Direction::Right)];
+    Ok(())
+}
+
+fn get_energized_count(start: Beam, input: &Vec<Vec<char>>) -> u32 {
+    let mut visited = HashMap::new();
+    let mut beams = vec![start];
     visited.insert(beams[0].clone(), true);
 
     while beams.len() > 0 {
@@ -47,25 +53,10 @@ fn main() -> Result<(), std::io::Error> {
         beams = next_beams;
     }
 
-    let mut part1 = 0;
-    for y in 0..input.len() {
-        for x in 0..input[0].len() {
-            let mut found = false;
-            for beam in visited.keys() {
-                if beam.0 == (x as u32, y as u32) {
-                    found = true;
-                    break;
-                }
-            }
-            if found {
-                part1 += 1;
-            }
-        }
-    }
-
-    dbg!(part1);
-
-    Ok(())
+    let mut positions = visited.keys().map(|(p, _)| p).collect::<Vec<&(u32, u32)>>();
+    positions.sort();
+    positions.dedup();
+    return positions.len() as u32;
 }
 
 fn get_next_position(beam: Beam, input: &Vec<Vec<char>>) -> Option<Vec<Beam>> {
