@@ -16,7 +16,7 @@ enum Direction {
 struct Pos(i32, i32, Direction);
 
 impl Pos {
-    fn successors(&self, map: &Vec<Vec<i32>>) -> Vec<(Pos, i32)> {
+    fn successors(&self, map: &Vec<Vec<i32>>, min_moves: i32, max_moves: i32) -> Vec<(Pos, i32)> {
         let mut successors = Vec::new();
         let (x, y, direction) = (self.0, self.1, self.2);
         let next_directions = next_direction(direction);
@@ -25,7 +25,7 @@ impl Pos {
 
         for next_direction in next_directions {
             let mut cost = 0;
-            for i in 1..=3 {
+            for i in 1..=max_moves {
                 let (next_x, next_y) = match next_direction {
                     Direction::Up => (x, y - i),
                     Direction::Down => (x, y + i),
@@ -37,7 +37,9 @@ impl Pos {
                     let next_pos = Pos(next_x, next_y, next_direction);
                     let next_value = map[next_x as usize][next_y as usize];
                     cost += next_value;
-                    successors.push((next_pos, cost));
+                    if i >= min_moves {
+                        successors.push((next_pos, cost));
+                    }
                 }
             }
         }
@@ -65,14 +67,24 @@ fn main() -> Result<(), std::io::Error> {
     let start = Pos(0, 0, Direction::Start);
     let max_x = (map.len() - 1) as i32;
     let max_y = (map[0].len() - 1) as i32;
-    let result = dijkstra(
+
+    let part_1 = dijkstra(
         &start,
-        |p| p.successors(&map),
+        |p| p.successors(&map, 1, 3),
         |p| p.0 == max_x && p.1 == max_y,
     );
 
-    let (_, cost) = result.unwrap();
-    dbg!(cost);
+    let (_, part1_cost) = part_1.unwrap();
+    dbg!(part1_cost);
+
+    let part_2 = dijkstra(
+        &start,
+        |p| p.successors(&map, 4, 10),
+        |p| p.0 == max_x && p.1 == max_y,
+    );
+
+    let (_, part2_cost) = part_2.unwrap();
+    dbg!(part2_cost);
 
     Ok(())
 }
