@@ -64,33 +64,15 @@ fn main() -> Result<(), std::io::Error> {
         state.insert(key, module);
     }
 
-    let mut cycle = vec![];
-
-    let mut i = 0;
-    loop {
-        i += 1;
-        dbg!(i);
+    let mut low_pulses = 0;
+    let mut high_pulses = 0;
+    for _ in 0..1000 {
         let outcome = push_button(&mut state);
-        cycle.push(outcome);
-        if is_initial_state(&state) {
-            break;
-        }
+        low_pulses += outcome.0;
+        high_pulses += outcome.1;
     }
 
-    let full_cyles = (1000.0 / cycle.len() as f32).floor() as u32;
-    let full_cyle_low_pulses = cycle.iter().map(|(low, _)| low).sum::<u32>();
-    let full_cyle_high_pulses = cycle.iter().map(|(_, high)| high).sum::<u32>();
-    let leftover = (1000 % cycle.len() as u32) as usize;
-    let leftover_cyle_low_pulses = cycle.iter().take(leftover).map(|(low, _)| low).sum::<u32>();
-    let leftover_cyle_high_pulses = cycle
-        .iter()
-        .take(leftover)
-        .map(|(_, high)| high)
-        .sum::<u32>();
-
-    let part1 = (leftover_cyle_low_pulses + full_cyle_low_pulses * full_cyles)
-        * (leftover_cyle_high_pulses + full_cyle_high_pulses * full_cyles);
-
+    let part1 = low_pulses * high_pulses;
     dbg!(part1);
 
     Ok(())
@@ -179,12 +161,4 @@ fn push_button(state: &mut HashMap<String, Module>) -> (u32, u32) {
     }
 
     (low_pulses, high_pulses)
-}
-
-fn is_initial_state(state: &HashMap<String, Module>) -> bool {
-    state.iter().all(|(_, module)| match module {
-        Module::FlipFlop(on, _) => !on,
-        Module::Conjunction(states, _) => states.values().all(|&p| p == Pulse::Low),
-        _ => true,
-    })
 }
